@@ -44,8 +44,8 @@ def get_air_quality():
         print(f"Air Quality API Error: {e}")
         return None # Return None if error
 
-# --- Main Program ---
-print("Starting Real-Time Data Logger (Temp + AQI)...")
+# --- Main Program (NO LOOP) ---
+print("Starting Real-Time Data Logger (Single Run)...")
 
 # --- 1. Write Header Only If File Does Not Exist ---
 if not os.path.exists(FILE_NAME):
@@ -55,27 +55,28 @@ if not os.path.exists(FILE_NAME):
         writer.writerow(["Timestamp", "Temperature (°C)", "PM2.5"])
     print(f"Created new log file: {FILE_NAME}")
 
-# --- 2. Main Data Logging Loop ---
-while True:
-    try:
-        # Fetch data from both APIs
-        temp_value = get_temperature()
-        pm25_value = get_air_quality()
+# --- 2. Main Data Logging ---
+try:
+    # Fetch data from both APIs
+    temp_value = get_temperature()
+    pm25_value = get_air_quality()
 
-        # Format timestamp
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Format timestamp
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Log to Console
-        print(f"[{timestamp}] Temp: {temp_value}°C, PM2.5: {pm25_value}")
+    # Log to Console
+    print(f"[{timestamp}] Temp: {temp_value}°C, PM2.5: {pm25_value}")
 
-        # --- Save data to CSV ---
-        with open(FILE_NAME, "a", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow([timestamp, temp_value, pm25_value])
+    # --- Save data to CSV ---
+    with open(FILE_NAME, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([timestamp, temp_value, pm25_value])
+    
+    print("Data appended to CSV successfully.")
 
-    except Exception as e:
-        print(f"An unexpected error occurred in main loop: {e}")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
 
-    # Wait for 10 minutes (600 seconds)
-    print("Waiting for 10 minutes...")
-    time.sleep(600)
+print("Script finished.")
+# NO while True loop
+# NO time.sleep()
