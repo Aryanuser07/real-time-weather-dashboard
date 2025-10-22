@@ -1,12 +1,14 @@
-name: "Weather + PM2.5 Logger"
+name: Run Data-Logger Script
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *'  # runs every 10 minutes
-  workflow_dispatch:  # allows manual trigger from GitHub UI
+    - cron: '*/10 * * * *'
 
 jobs:
-  fetch-and-log:
+  build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
 
     steps:
@@ -16,24 +18,24 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
-      - name: Run weather logging script
+      - name: Run Python script
+        # YEH NAYA BLOCK HAI SECRET PASS KARNE KE LIYE
+        env:
+          OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
         run: python weather_data.py
 
-      - name: Commit & push log file if updated
+      - name: Commit and push if data changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git diff --quiet --exit-code weather_log.csv || (
-            git add weather_log.csv &&
-            git commit -m "Automated update: $(date -u)" &&
-            git push
-          )
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git pull
+          git add weather_log.csv
+          git diff --staged --quiet || git commit -m "Update real-TIME data log"
+          git push
