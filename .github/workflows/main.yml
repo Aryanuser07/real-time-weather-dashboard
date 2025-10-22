@@ -9,6 +9,10 @@ on:
 
 jobs:
   build:
+    # YEH NAYA BLOCK HAI PERMISSION DENE KE LIYE
+    permissions:
+      contents: write
+
     runs-on: ubuntu-latest # GitHub ke server par chalao
 
     steps:
@@ -28,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
-      # Step 4: Hamara main Python script run karo
+      # Step 4: Hamara main Python script run karo (jo loop mein nahi hai)
       - name: Run Python script
         run: python weather_data.py
 
@@ -40,5 +44,5 @@ jobs:
           # Sirf 'weather_log.csv' file ko add karo
           git add weather_log.csv
           # Check karo ki kya file mein kuch change hua hai
-          git diff --staged --quiet || git commit -m "Update real-time data log"
+          git diff --staged --quiet || git commit -m "Update real-TIME data log"
           git push
