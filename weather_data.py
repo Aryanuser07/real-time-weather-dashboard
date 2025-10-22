@@ -7,7 +7,7 @@ import os
 # --- Configuration ---
 FILE_NAME = "weather_log.csv"
 MAX_ROWS = 500
-LAT = 30.74
+LAT = 30.74 # Temperature ke liye abhi bhi zaroori hai
 LON = 76.78
 HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
 
@@ -16,8 +16,8 @@ OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY')
 
 # --- API URLs ---
 TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-# --- !!! 404 FIX: Ab hum /v3/measurements endpoint use kar rahe hain (yeh reliable hai) !!! ---
-AQ_API_URL = f"https://api.openaq.org/v3/measurements?coordinates={LAT},{LON}&radius=100000&parameter=pm25&limit=1&order_by=datetime&sort=desc"
+# --- !!! 404 FIX: Ab hum coordinates ki jagah direct v3 LOCATION ID (213346) use kar rahe hain !!! ---
+AQ_API_URL = "https://api.openaq.org/v3/measurements?locations_id=213346&parameter=pm25&limit=1&order_by=datetime&sort=desc"
 
 
 # --- Function to fetch Temperature ---
@@ -51,7 +51,7 @@ def get_air_quality():
             pm25_value = data['results'][0]['value']
             return pm25_value
         
-        print(f"No PM2.5 data found for coordinates {LAT},{LON}.")
+        print(f"No PM2.5 data found for location ID 213346.")
         return None
     except Exception as e:
         print(f"Air Quality API Error: {e}") 
