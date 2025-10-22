@@ -1,0 +1,44 @@
+name: Run Data-Logger Script
+
+# Yeh workflow kab chalega:
+on:
+  workflow_dispatch: # Manual chalaane ke liye
+  schedule:
+    # Har 10 minute mein chalao
+    - cron: '*/10 * * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # GitHub ke server par chalao
+
+    steps:
+      # Step 1: Code ko server par download karo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Python 3.10 setup karo
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Step 3: 'requests' library install karo
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      # Step 4: Hamara main Python script run karo
+      - name: Run Python script
+        run: python weather_data.py
+
+      # Step 5: Nayi CSV file ko GitHub par save (commit) karo
+      - name: Commit and push if data changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # Sirf 'weather_log.csv' file ko add karo
+          git add weather_log.csv
+          # Check karo ki kya file mein kuch change hua hai
+          git diff --staged --quiet || git commit -m "Update real-time data log"
+          git push
