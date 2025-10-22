@@ -7,7 +7,7 @@ import os
 # --- Configuration ---
 FILE_NAME = "weather_log.csv"
 MAX_ROWS = 500
-LAT = 30.74 # Temperature ke liye abhi bhi zaroori hai
+LAT = 30.74
 LON = 76.78
 HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
 
@@ -16,8 +16,8 @@ OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY')
 
 # --- API URLs ---
 TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-# --- !!! 404 FIX: Ab hum coordinates ki jagah direct LOCATION ID (3386) use kar rahe hain !!! ---
-AQ_API_URL = "https://api.openaq.org/v3/latest/3386" # Direct link to Chandigarh station
+# --- !!! 404 FIX: Ab hum /v3/measurements endpoint use kar rahe hain (yeh reliable hai) !!! ---
+AQ_API_URL = f"https://api.openaq.org/v3/measurements?coordinates={LAT},{LON}&radius=100000&parameter=pm25&limit=1&order_by=datetime&sort=desc"
 
 
 # --- Function to fetch Temperature ---
@@ -46,13 +46,12 @@ def get_air_quality():
         response.raise_for_status() # Check for 401/404 errors
         data = response.json()
         
-        # JSON structure: results -> measurements -> value
-        if data['results']:
-            for measurement in data['results'][0]['measurements']:
-                if measurement['parameter'] == 'pm25':
-                    return measurement['value']
+        # JSON structure: results[0].value
+        if data['results'] and len(data['results']) > 0:
+            pm25_value = data['results'][0]['value']
+            return pm25_value
         
-        print(f"No PM2.5 data found for location ID 3386.")
+        print(f"No PM2.5 data found for coordinates {LAT},{LON}.")
         return None
     except Exception as e:
         print(f"Air Quality API Error: {e}") 
