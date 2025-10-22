@@ -1,94 +1,86 @@
 import requests
-import datetime
 import csv
-import time
 import os
+from datetime import datetime
 
-# --- Configuration ---
-FILE_NAME = "weather_log.csv"
-MAX_ROWS = 500
-LAT = 30.74 # Temperature ke liye
-LON = 76.78
-# --- !!! HEADERS BADAL GAYE HAIN !!! ---
-HEADERS = ["Timestamp", "Temperature (°C)", "BTC_Price_USD"]
+# --- 1. API Configuration (Yahan apni details daalo) ---
 
-# --- API URLs ---
-TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-# --- !!! NAYI API: Bitcoin Price (Free & No Key) !!! ---
-CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
+# OpenWeatherMap API details (Temperature ke liye)
+WEATHER_API_KEY = "YOUR_OPENWEATHER_API_KEY"  # Apna API Key yahan daalo
+CITY_NAME = "YOUR_CITY_NAME"  # Apna sheher yahan daalo (e.g., "Mumbai,IN")
+weather_url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY_NAME}&appid={WEATHER_API_KEY}&units=metric"
+
+# CoinGecko API details (Bitcoin ke liye - Iske liye API key nahi chahiye)
+btc_url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
 
 
-# --- Function to fetch Temperature ---
+# --- 2. Data Fetching Functions ---
+
 def get_temperature():
+    """Mausam ka data fetch karta hai."""
     try:
-        response = requests.get(TEMP_API_URL)
-        response.raise_for_status()
+        response = requests.get(weather_url)
+        response.raise_for_status()  # Agar koi error ho (jaise 404, 500) toh exception raise karo
         data = response.json()
-        return data["current"]["temperature_2m"]
+        temperature = data['main']['temp']
+        return temperature
     except Exception as e:
-        print(f"Temperature API Error: {e}")
-        return None
+        print(f"Error fetching temperature: {e}")
+        return None  # Error hone par None return karo
 
-# --- Function to fetch Bitcoin Price ---
 def get_btc_price():
+    """Bitcoin ka price fetch karta hai."""
     try:
-        response = requests.get(CRYPTO_API_URL)
+        response = requests.get(btc_url)
         response.raise_for_status()
         data = response.json()
-        # JSON structure: {"bitcoin":{"usd":60000.12}}
-        return data['bitcoin']['usd']
+        price = data['bitcoin']['usd']
+        return price
     except Exception as e:
-        print(f"Crypto API Error: {e}") 
-        return None
+        print(f"Error fetching BTC price: {e}")
+        return None  # Error hone par None return karo
 
-# --- Main Program (Single Run + Log Rotation) ---
-print("Starting Logger (Single Run with Log Rotation)...")
 
-all_data = []
-if not os.path.exists(FILE_NAME):
-    print(f"Log file not found. Creating new file: {FILE_NAME}")
-    all_data.append(HEADERS)
-else:
-    try:
-        with open(FILE_NAME, 'r', newline='', encoding='latin-1') as file:
-            reader = csv.reader(file)
-            all_data = list(reader)
-        if not all_data or all_data[0] != HEADERS:
-             print("Header mismatch or empty file. Recreating file.")
-             all_data = [HEADERS]
-    except Exception as e:
-        print(f"Error reading file {e}. Recreating.")
-        all_data = [HEADERS]
+# --- 3. Main Script Logic ---
 
-try:
-    temp_value = get_temperature()
-    # --- !!! PM2.5 ki jagah BTC_VALUE !!! ---
-    btc_value = get_btc_price()
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+print("Data logging script shuru ho raha hai...")
+
+# Data fetch karo
+current_temp = get_temperature()
+current_btc = get_btc_price()
+
+# Timestamp generate karo (UTC time, jaisa GitHub Actions use karta hai)
+current_timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+# Check karo ki data sahi se aaya ya nahi
+if current_temp is not None and current_btc is not None:
     
-    if temp_value is not None and btc_value is not None:
-        # --- !!! NAYI ROW !!! ---
-        new_row = [timestamp, temp_value, btc_value]
-        all_data.append(new_row)
-        print(f"[{timestamp}] Temp: {temp_value}°C, BTC Price: ${btc_value}")
-    else:
-        print("Invalid data from API (one or both failed). Skipping this run.")
-except Exception as e:
-    print(f"An unexpected error occurred fetching data: {e}")
+    csv_file_path = 'weather_log.csv'
+    header_row = ['Timestamp', 'Temperature (°C)', 'BTC_Price_USD']
+    data_row = [current_timestamp, current_temp, current_btc]
 
-if len(all_data) > (MAX_ROWS + 1): # +1 for the header
-    print(f"Log rotating: Trimming from {len(all_data)-1} to {MAX_ROWS} entries.")
-    header = all_data[0]
-    data_rows = all_data[1:]
-    trimmed_data = data_rows[-MAX_ROWS:]
-    all_data = [header] + trimmed_data
+    # Check karo ki file pehle se hai ya nahi
+    file_exists = os.path.isfile(csv_file_path)
 
-try:
-    with open(FILE_NAME, "w", newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerows(all_data)
-    print(f"Data written to {FILE_NAME}. Total entries: {len(all_data)-1}")
-except Exception as e:
-    print(f"Error writing to file: {e}")
+    try:
+        # File ko 'a' (append) mode mein kholo
+        with open(csv_file_path, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            
+            # Agar file nayi hai (yaani exist nahi karti thi), toh header likho
+            if not file_exists or os.path.getsize(csv_file_path) == 0:
+                writer.writerow(header_row)
+                print("File nahi thi, header row add kar raha hoon.")
+            
+            # Naya data row hamesha add karo
+            writer.writerow(data_row)
+            
+        print(f"Successfully data append kiya: {data_row}")
 
-print("Script finished.")
+    except Exception as e:
+        print(f"CSV file mein likhne mein error: {e}")
+
+else:
+    print("Data fetch nahi kar paaya, CSV file update nahi kar raha.")
+
+print("Script khatm.")
