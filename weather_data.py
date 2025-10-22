@@ -12,12 +12,12 @@ LON = 76.78
 HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
 
 # --- API KEY (Reads from GitHub Secrets) ---
-# YEH LINE SABSE IMPORTANT HAI
 OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY') 
 
-# --- API URLs ---
+# --- API URLs (TYPO FIXED) ---
 TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-AQ_API_URL = f"https://api.openaq.org/v3/latest?coordinates={LAT},{LON}&radius=100000&parameter=pm25"
+# --- !!! 404 FIX: 'parameter=pm25' HATA DIYA GAYA HAI !!! ---
+AQ_API_URL = f"https://api.openaq.org/v3/latest?coordinates={LAT},{LON}&radius=100000"
 
 
 # --- Function to fetch Temperature ---
@@ -33,21 +33,20 @@ def get_temperature():
 
 # --- Function to fetch Air Quality (PM2.5) ---
 def get_air_quality():
-    # Check karo ki key mili ya nahin
     if not OPENAQ_KEY:
         print("Error: OPENAQ_API_KEY secret not found! Check GitHub Settings > Secrets.")
         return None
         
     try:
-        # API Key ko headers mein bhejna zaroori hai
         headers = {
             "accept": "application/json",
-            "X-API-Key": OPENAQ_KEY  # <-- YEH LINE BHI IMPORTANT HAI
+            "X-API-Key": OPENAQ_KEY
         }
         response = requests.get(AQ_API_URL, headers=headers)
         response.raise_for_status() # Check for 401/404 errors
         data = response.json()
         
+        # Script khud PM2.5 dhoondega
         if data['results']:
             for measurement in data['results'][0]['measurements']:
                 if measurement['parameter'] == 'pm25':
@@ -56,7 +55,7 @@ def get_air_quality():
         print("No PM2.5 data found in v3 API response.")
         return None
     except Exception as e:
-        print(f"Air Quality API Error: {e}") # Yahaan 401 error dikhega agar key galat hai
+        print(f"Air Quality API Error: {e}") 
         return None
 
 # --- Main Program (Baaki sab same hai) ---
