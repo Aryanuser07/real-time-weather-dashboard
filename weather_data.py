@@ -12,11 +12,10 @@ LON = 76.78
 HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
 
 # --- API KEY (Reads from GitHub Secrets) ---
-# GitHub Action is key ko yahaan bhejega
 OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY') 
 
-# API URLs
-TEMP_API_URL = f"https://api-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
+# --- API URLs (TYPO FIXED) ---
+TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m" # <-- YEH LINK THEEK KAR DIYA HAI
 AQ_API_URL = f"https://api.openaq.org/v3/latest?coordinates={LAT},{LON}&radius=100000&parameter=pm25"
 
 
@@ -38,10 +37,9 @@ def get_air_quality():
         return None
         
     try:
-        # API Key ko headers mein bhejna zaroori hai
         headers = {
             "accept": "application/json",
-            "X-API-Key": OPENAQ_KEY  # <-- YEH HAI IMPORTANT CHANGE
+            "X-API-Key": OPENAQ_KEY
         }
         response = requests.get(AQ_API_URL, headers=headers)
         response.raise_for_status()
@@ -61,8 +59,6 @@ def get_air_quality():
 # --- Main Program (Single Run + Log Rotation) ---
 print("Starting Logger (Single Run with Log Rotation)...")
 
-# (Baaki poora code same hai... file reading, writing, rotating)
-# ... (File read/create logic) ...
 all_data = []
 if not os.path.exists(FILE_NAME):
     print(f"Log file not found. Creating new file: {FILE_NAME}")
@@ -79,7 +75,6 @@ else:
         print(f"Error reading file {e}. Recreating.")
         all_data = [HEADERS]
 
-# ... (Fetch data logic) ...
 try:
     temp_value = get_temperature()
     pm25_value = get_air_quality()
@@ -94,7 +89,6 @@ try:
 except Exception as e:
     print(f"An unexpected error occurred fetching data: {e}")
 
-# ... (Log rotation logic) ...
 if len(all_data) > (MAX_ROWS + 1): # +1 for the header
     print(f"Log rotating: Trimming from {len(all_data)-1} to {MAX_ROWS} entries.")
     header = all_data[0]
@@ -102,7 +96,6 @@ if len(all_data) > (MAX_ROWS + 1): # +1 for the header
     trimmed_data = data_rows[-MAX_ROWS:]
     all_data = [header] + trimmed_data
 
-# ... (File write logic) ...
 try:
     with open(FILE_NAME, "w", newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
