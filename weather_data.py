@@ -6,14 +6,18 @@ import os
 
 # --- Configuration ---
 FILE_NAME = "weather_log.csv"
-MAX_ROWS = 500 # File mein hamesha last 500 rows hi rakhega
+MAX_ROWS = 500
 LAT = 30.74
 LON = 76.78
-HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"] # Headers ko define karlo
+HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
+
+# --- API KEY (Reads from GitHub Secrets) ---
+# GitHub Action is key ko yahaan bhejega
+OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY') 
 
 # API URLs
-TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-AQ_API_URL = f"https://api.openaq.org/v2/latest?limit=1&page=1&offset=0&sort=desc&coordinates={LAT},{LON}&radius=100000&order_by=lastUpdated&dumpRaw=false"
+TEMP_API_URL = f"https://api-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
+AQ_API_URL = f"https://api.openaq.org/v3/latest?coordinates={LAT},{LON}&radius=100000&parameter=pm25"
 
 
 # --- Function to fetch Temperature ---
@@ -29,13 +33,26 @@ def get_temperature():
 
 # --- Function to fetch Air Quality (PM2.5) ---
 def get_air_quality():
+    if not OPENAQ_KEY:
+        print("Error: OPENAQ_API_KEY secret not found!")
+        return None
+        
     try:
-        response = requests.get(AQ_API_URL)
+        # API Key ko headers mein bhejna zaroori hai
+        headers = {
+            "accept": "application/json",
+            "X-API-Key": OPENAQ_KEY  # <-- YEH HAI IMPORTANT CHANGE
+        }
+        response = requests.get(AQ_API_URL, headers=headers)
         response.raise_for_status()
         data = response.json()
-        for measurement in data['results'][0]['measurements']:
-            if measurement['parameter'] == 'pm25':
-                return measurement['value']
+        
+        if data['results']:
+            for measurement in data['results'][0]['measurements']:
+                if measurement['parameter'] == 'pm25':
+                    return measurement['value']
+        
+        print("No PM2.5 data found in v3 API response.")
         return None
     except Exception as e:
         print(f"Air Quality API Error: {e}")
@@ -44,17 +61,17 @@ def get_air_quality():
 # --- Main Program (Single Run + Log Rotation) ---
 print("Starting Logger (Single Run with Log Rotation)...")
 
-# --- 1. Read existing data ---
+# (Baaki poora code same hai... file reading, writing, rotating)
+# ... (File read/create logic) ...
 all_data = []
 if not os.path.exists(FILE_NAME):
     print(f"Log file not found. Creating new file: {FILE_NAME}")
     all_data.append(HEADERS)
 else:
     try:
-        with open(FILE_NAME, 'r', newline='', encoding='utf-8') as file:
+        with open(FILE_NAME, 'r', newline='', encoding='latin-1') as file:
             reader = csv.reader(file)
             all_data = list(reader)
-        # Check if header is correct or file is empty
         if not all_data or all_data[0] != HEADERS:
              print("Header mismatch or empty file. Recreating file.")
              all_data = [HEADERS]
@@ -62,35 +79,32 @@ else:
         print(f"Error reading file {e}. Recreating.")
         all_data = [HEADERS]
 
-# --- 2. Fetch new data ---
+# ... (Fetch data logic) ...
 try:
     temp_value = get_temperature()
     pm25_value = get_air_quality()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # Add new data IF data is valid
     if temp_value is not None and pm25_value is not None:
         new_row = [timestamp, temp_value, pm25_value]
         all_data.append(new_row)
         print(f"[{timestamp}] Temp: {temp_value}°C, PM2.5: {pm25_value}")
     else:
-        print("Invalid data from API. Skipping this run.")
-
+        print("Invalid data from API (one or both failed). Skipping this run.")
 except Exception as e:
     print(f"An unexpected error occurred fetching data: {e}")
 
-# --- 3. Rotate Log (Keep only last MAX_ROWS) ---
+# ... (Log rotation logic) ...
 if len(all_data) > (MAX_ROWS + 1): # +1 for the header
     print(f"Log rotating: Trimming from {len(all_data)-1} to {MAX_ROWS} entries.")
-    # Keep the header + the last MAX_ROWS data
     header = all_data[0]
-    data_rows = all_data[1:] # Get just the data
-    trimmed_data = data_rows[-MAX_ROWS:] # Get the last 500
-    all_data = [header] + trimmed_data # Re-assemble the file
+    data_rows = all_data[1:]
+    trimmed_data = data_rows[-MAX_ROWS:]
+    all_data = [header] + trimmed_data
 
-# --- 4. Write cleaned data back to file ---
+# ... (File write logic) ...
 try:
-    with open(FILE_NAME, "w", newline='', encoding='utf-8') as file: # "w" = OVERWRITE
+    with open(FILE_NAME, "w", newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerows(all_data)
     print(f"Data written to {FILE_NAME}. Total entries: {len(all_data)-1}")
