@@ -7,17 +7,15 @@ import os
 # --- Configuration ---
 FILE_NAME = "weather_log.csv"
 MAX_ROWS = 500
-LAT = 30.74 # Temperature ke liye abhi bhi zaroori hai
+LAT = 30.74 # Temperature ke liye
 LON = 76.78
-HEADERS = ["Timestamp", "Temperature (°C)", "PM2.5"]
-
-# --- API KEY (Reads from GitHub Secrets) ---
-OPENAQ_KEY = os.environ.get('OPENAQ_API_KEY') 
+# --- !!! HEADERS BADAL GAYE HAIN !!! ---
+HEADERS = ["Timestamp", "Temperature (°C)", "BTC_Price_USD"]
 
 # --- API URLs ---
 TEMP_API_URL = f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}&current=temperature_2m"
-# --- !!! 404 FIX: Ab hum coordinates ki jagah direct v3 LOCATION ID (213346) use kar rahe hain !!! ---
-AQ_API_URL = "https://api.openaq.org/v3/measurements?locations_id=213346&parameter=pm25&limit=1&order_by=datetime&sort=desc"
+# --- !!! NAYI API: Bitcoin Price (Free & No Key) !!! ---
+CRYPTO_API_URL = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
 
 
 # --- Function to fetch Temperature ---
@@ -31,33 +29,19 @@ def get_temperature():
         print(f"Temperature API Error: {e}")
         return None
 
-# --- Function to fetch Air Quality (PM2.5) ---
-def get_air_quality():
-    if not OPENAQ_KEY:
-        print("Error: OPENAQ_API_KEY secret not found! Check GitHub Settings > Secrets.")
-        return None
-        
+# --- Function to fetch Bitcoin Price ---
+def get_btc_price():
     try:
-        headers = {
-            "accept": "application/json",
-            "X-API-Key": OPENAQ_KEY
-        }
-        response = requests.get(AQ_API_URL, headers=headers)
-        response.raise_for_status() # Check for 401/404 errors
+        response = requests.get(CRYPTO_API_URL)
+        response.raise_for_status()
         data = response.json()
-        
-        # JSON structure: results[0].value
-        if data['results'] and len(data['results']) > 0:
-            pm25_value = data['results'][0]['value']
-            return pm25_value
-        
-        print(f"No PM2.5 data found for location ID 213346.")
-        return None
+        # JSON structure: {"bitcoin":{"usd":60000.12}}
+        return data['bitcoin']['usd']
     except Exception as e:
-        print(f"Air Quality API Error: {e}") 
+        print(f"Crypto API Error: {e}") 
         return None
 
-# --- Main Program (Baaki sab same hai) ---
+# --- Main Program (Single Run + Log Rotation) ---
 print("Starting Logger (Single Run with Log Rotation)...")
 
 all_data = []
@@ -78,13 +62,15 @@ else:
 
 try:
     temp_value = get_temperature()
-    pm25_value = get_air_quality()
+    # --- !!! PM2.5 ki jagah BTC_VALUE !!! ---
+    btc_value = get_btc_price()
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    if temp_value is not None and pm25_value is not None:
-        new_row = [timestamp, temp_value, pm25_value]
+    if temp_value is not None and btc_value is not None:
+        # --- !!! NAYI ROW !!! ---
+        new_row = [timestamp, temp_value, btc_value]
         all_data.append(new_row)
-        print(f"[{timestamp}] Temp: {temp_value}°C, PM2.5: {pm25_value}")
+        print(f"[{timestamp}] Temp: {temp_value}°C, BTC Price: ${btc_value}")
     else:
         print("Invalid data from API (one or both failed). Skipping this run.")
 except Exception as e:
