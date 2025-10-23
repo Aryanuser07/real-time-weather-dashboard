@@ -62,13 +62,25 @@ def ensure_file():
 def trim_old_data():
     try:
         df = pd.read_csv(FILE_NAME)
-        df["Timestamp"] = pd.to_datetime(df["Timestamp"])  # parses timezone automatically
+
+        # parse timestamps, infer timezone if present
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"], utc=True, errors='coerce')
+
+        # drop rows that could not be parsed
+        df = df.dropna(subset=["Timestamp"])
+
+        # convert UTC to IST
         ist = pytz.timezone("Asia/Kolkata")
+        df["Timestamp"] = df["Timestamp"].dt.tz_convert(ist)
+
+        # filter last 7 days in IST
         one_week_ago = datetime.datetime.now(ist) - datetime.timedelta(days=7)
         df = df[df["Timestamp"] > one_week_ago]
+
         df.to_csv(FILE_NAME, index=False)
     except Exception as e:
         print(f"Error trimming data: {e}")
+
 
 # --- Main ---
 def main():
@@ -83,3 +95,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
