@@ -1,56 +1,38 @@
-name: Run Data-Logger Script
+name: Auto Update Data Log (Weather + Bitcoin)
 
 on:
-  # Action ko har 15 minute pe schedule par chalane ke liye
   schedule:
-    - cron: '*/15 * * * *'
-  
-  # Action ko GitHub ke "Actions" tab se manually chalaane ke liye
-  workflow_dispatch:
+    - cron: "0 * * * *"  # runs every hour
+  workflow_dispatch:     # allows manual run from Actions tab
+
+permissions:
+  contents: write  # allow workflow to push changes
 
 jobs:
-  build:
-    # Yeh job Ubuntu (Linux) machine par chalegi
+  update-data:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Aapke repository ka code is machine par download karega
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      # Step 2: Python (version 3.10) set up karega
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
-      # Step 3: Python ki 'requests' library ko install karega
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
-      
-      # Step 4: Aapki Python script (data_logger.py) ko chalayega
-      - name: Run Python script to log data
-        run: |
-          python data_logger.py  # Agar aapki file ka naam alag hai, toh yahan badalna
+        run: pip install requests pandas
 
-      # Step 5: Naye data (jo CSV file me add hua) ko vapas repository me commit karega
+      - name: Run data collector
+        run: python data_collector.py
+
       - name: Commit and push changes
         run: |
-          # Git ko batayega ki commit kaun kar raha hai (bot)
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # Sirf 'weather_log.csv' file ko commit ke liye add karega
-          git add weather_log.csv
-          
-          # Yeh check karega ki file me sach me koi naya data add hua hai ya nahi
-          if git diff --staged --quiet; then
-            echo "Koyi naya data nahi hai, commit skip kar raha hoon."
-          else
-            # Agar naya data hai, toh commit karega aur push karega
-            git commit -m "Update real-TIME data log"
-            git push
-            echo "Naya data push kar diya."
-          fi
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data_log.csv
+          git commit -m "Auto update data_log.csv [skip ci]" || echo "No changes to commit"
+          git push
