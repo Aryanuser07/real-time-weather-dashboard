@@ -10,11 +10,13 @@ BTC_API = "https://api.coincap.io/v2/assets/bitcoin"
 
 def fetch_data():
     try:
+        # Get weather data
         weather_resp = requests.get(WEATHER_API, timeout=10).json()
         temperature = weather_resp["current"]["temperature_2m"]
 
+        # Get Bitcoin data
         btc_resp = requests.get(BTC_API, timeout=10).json()
-        btc_price = btc_resp["bpi"]["USD"].get("rate_float") or float(btc_resp["bpi"]["USD"]["rate"].replace(",", ""))
+        btc_price = float(btc_resp["data"]["priceUsd"])
 
         timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         return [timestamp, temperature, btc_price]
@@ -50,4 +52,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
