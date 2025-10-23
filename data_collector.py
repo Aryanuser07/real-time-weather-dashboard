@@ -6,20 +6,23 @@ import pandas as pd
 
 FILE_NAME = "data_log.csv"
 WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=30.74&longitude=76.78&current=temperature_2m"
-BTC_API = "https://api.coincap.io/v2/assets/bitcoin"
+BTC_API = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
 
 def fetch_data():
     try:
-        # Get weather data
+        # Fetch weather data
         weather_resp = requests.get(WEATHER_API, timeout=10).json()
         temperature = weather_resp["current"]["temperature_2m"]
 
-        # Get Bitcoin data
+        # Fetch Bitcoin price from CoinGecko
         btc_resp = requests.get(BTC_API, timeout=10).json()
-        btc_price = float(btc_resp["data"]["priceUsd"])
+        btc_price = btc_resp["bitcoin"]["usd"]
 
+        # Timestamp
         timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
         return [timestamp, temperature, btc_price]
+
     except Exception as e:
         print(f"Error fetching data: {e}")
         return None
@@ -48,7 +51,7 @@ def main():
             writer = csv.writer(f)
             writer.writerow(new_data)
         trim_old_data()
-        print(f"Logged: {new_data}")
+        print(f"✅ Logged: {new_data}")
 
 if __name__ == "__main__":
     main()
