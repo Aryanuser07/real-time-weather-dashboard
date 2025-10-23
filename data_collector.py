@@ -37,11 +37,15 @@ def trim_old_data():
     try:
         df = pd.read_csv(FILE_NAME)
         df["Timestamp"] = pd.to_datetime(df["Timestamp"], utc=True)
-        one_week_ago = datetime.datetime.utcnow() - datetime.timedelta(days=7)
+
+        # Make sure both sides are timezone-aware (UTC)
+        one_week_ago = (datetime.datetime.utcnow() - datetime.timedelta(days=7)).replace(tzinfo=datetime.timezone.utc)
+
         df = df[df["Timestamp"] > one_week_ago]
         df.to_csv(FILE_NAME, index=False)
     except Exception as e:
         print(f"Error trimming data: {e}")
+
 
 def main():
     ensure_file()
@@ -55,3 +59,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
