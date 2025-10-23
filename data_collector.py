@@ -6,7 +6,7 @@ import pandas as pd
 
 FILE_NAME = "data_log.csv"
 WEATHER_API = "https://api.open-meteo.com/v1/forecast?latitude=30.74&longitude=76.78&current=temperature_2m"
-BTC_API = "https://api.coindesk.com/v1/bpi/currentprice.json"
+BTC_API = "https://api.coincap.io/v2/assets/bitcoin"
 
 def fetch_data():
     try:
@@ -50,3 +50,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
