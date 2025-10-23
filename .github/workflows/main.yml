@@ -3,7 +3,7 @@ name: Auto Update Data Log (Weather + Bitcoin)
 on:
   schedule:
     - cron: "*/10 * * * *"  # runs every 10 min
-  workflow_dispatch:     # allows manual run from Actions tab
+  workflow_dispatch:        # allows manual run from Actions tab
 
 permissions:
   contents: write  # allow workflow to push changes
@@ -13,22 +13,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # --- Checkout repo ---
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           persist-credentials: true
 
+      # --- Cache pip dependencies ---
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # --- Set up Python ---
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
+      # --- Install dependencies ---
       - name: Install dependencies
-        run: pip install requests pandas
+        run: pip install -r requirements.txt
 
+      # --- Run data collector ---
       - name: Run data collector
         run: python data_collector.py
 
+      # --- Commit & push changes ---
       - name: Commit and push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
