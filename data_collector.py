@@ -96,17 +96,13 @@ def trim_old_data():
         df["Timestamp"] = df["Timestamp"].dt.tz_convert(IST)
         cutoff = datetime.datetime.now(IST) - datetime.timedelta(days=DAYS_TO_KEEP)
         filtered = df[df["Timestamp"] > cutoff]
-        # If already strings, convert back to isoformat without microseconds
-        filtered["Timestamp"] = filtered["Timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S%z")
-        # Write back only if rows changed to avoid unnecessary writes
+        # Convert back to ISO8601 (Grafana friendly)
+        filtered["Timestamp"] = filtered["Timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+        # Write back only if rows changed
         if len(filtered) != len(df):
             filtered.to_csv(FILE_NAME, index=False)
             print(f"Trimmed -> kept {len(filtered)} rows")
-        else:
-            # no trimming needed
-            pass
     except Exception:
-        # keep silent for minimal logs
         pass
 
 # ---------- Main ----------
@@ -117,14 +113,9 @@ def main():
     temp = get_temperature()
     btc = get_bitcoin_price()
 
-    # prepare IST timestamp (with offset)
+    # prepare IST timestamp (ISO 8601 format)
     now_ist = datetime.datetime.now(IST).replace(microsecond=0)
-    timestamp = now_ist.strftime("%Y-%m-%d %H:%M:%S%z")
-
-    # safety: timestamp must exist
-    if not timestamp:
-        print("ERROR: missing timestamp. Skipped.")
-        return
+    timestamp = now_ist.isoformat()
 
     # validate fetched values; if missing, mark as "N/A"
     temp_val = temp if temp is not None else "N/A"
@@ -134,18 +125,15 @@ def main():
 
     # read last row to avoid duplicate writes if values identical
     last = read_last_row()
-    # compare only the numeric/string values (ignore tiny differences in formatting)
     if last and len(last) >= 3:
         last_values = [last[1], last[2]]
         new_values = [str(new_row[1]), str(new_row[2])]
         if last_values == new_values:
-            # No change in values -> skip append to avoid commits
             print("No change, skipped")
             return
 
     # Append new row safely:
     try:
-        # load all rows (small file expected) then append and write atomically
         rows = []
         if os.path.exists(FILE_NAME):
             with open(FILE_NAME, "r", newline="", encoding="utf-8") as f:
@@ -155,11 +143,10 @@ def main():
             rows = [HEADER]
         rows.append(new_row)
         atomic_write_csv(rows)
-        # Trim old data (may rewrite file if trimming occurs)
         trim_old_data()
-        print("Logged")
-    except Exception:
-        print("ERROR: write failed")
+        print("✅ Logged successfully:", new_row)
+    except Exception as e:
+        print("ERROR: write failed:", e)
 
 if __name__ == "__main__":
     main()
